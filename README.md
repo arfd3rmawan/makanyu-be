@@ -1,110 +1,127 @@
-# 🛒 E-commerce REST API
+# Product & Card Management API
 
-Built with **Express.js**, **PostgreSQL**, and **JWT Authentication**.
+A RESTful API for managing products and project management cards with Atlassian integration.
 
----
+## Features
 
-## 📁 Project Structure
+### Products
+- CRUD operations for products
+- SQLite database storage
+- Product filtering by name
 
-```
-ecommerce-api/
-├── src/
-│   ├── index.js              ← App entry point
-│   ├── config/
-│   │   ├── database.js       ← PostgreSQL connection
-│   │   └── schema.sql        ← Database tables (run this first!)
-│   ├── middleware/
-│   │   └── auth.js           ← JWT protect & adminOnly
-│   ├── controllers/
-│   │   ├── authController.js
-│   │   ├── productController.js
-│   │   └── orderController.js
-│   └── routes/
-│       ├── authRoutes.js
-│       ├── productRoutes.js
-│       └── orderRoutes.js
-├── .env.example              ← Copy this to .env
-└── package.json
-```
+### Cards (NEW)
+- Create cards from Atlassian URLs
+- CRUD operations for project cards
+- Automatic card details fetching from Atlassian
+- Proper card title extraction from Atlassian data
 
----
+## Installation
 
-## 🚀 Getting Started
-
-### 1. Install dependencies
+1. Clone the repository
+2. Install dependencies:
 ```bash
 npm install
 ```
 
-### 2. Setup environment variables
+3. Set up environment variables (optional, for Atlassian integration):
 ```bash
-cp .env.example .env
-# Then edit .env with your database credentials and JWT secret
+ATLASSIAN_USERNAME=your-email@example.com
+ATLASSIAN_API_TOKEN=your-api-token
 ```
 
-### 3. Setup PostgreSQL database
+4. Start the server:
 ```bash
-# Create the database
-createdb ecommerce_db
-
-# Run the schema
-psql -d ecommerce_db -f src/config/schema.sql
+npm start
 ```
 
-### 4. Start the server
+For development:
 ```bash
-npm run dev     # development (auto-restart)
-npm start       # production
+npm run dev
 ```
 
----
-
-## 📡 API Endpoints
-
-### Auth
-| Method | Endpoint            | Access  | Description       |
-|--------|---------------------|---------|-------------------|
-| POST   | /api/auth/register  | Public  | Register new user |
-| POST   | /api/auth/login     | Public  | Login             |
-| GET    | /api/auth/me        | Private | Get my profile    |
+## API Endpoints
 
 ### Products
-| Method | Endpoint            | Access  | Description        |
-|--------|---------------------|---------|--------------------|
-| GET    | /api/products       | Public  | Get all products   |
-| GET    | /api/products/:id   | Public  | Get single product |
-| POST   | /api/products       | Admin   | Create product     |
-| PUT    | /api/products/:id   | Admin   | Update product     |
-| DELETE | /api/products/:id   | Admin   | Delete product     |
+- `GET /api/products` - Get all products
+- `GET /api/products/:id` - Get product by ID
+- `POST /api/products` - Create new product
+- `PUT /api/products/:id` - Update product
+- `DELETE /api/products/:id` - Delete product
 
-### Orders
-| Method | Endpoint                    | Access  | Description          |
-|--------|-----------------------------|---------|----------------------|
-| POST   | /api/orders                 | Private | Place an order       |
-| GET    | /api/orders                 | Private | Get my orders        |
-| GET    | /api/orders/all             | Admin   | Get all orders       |
-| PUT    | /api/orders/:id/status      | Admin   | Update order status  |
+### Cards
+- `GET /api/cards` - Get all cards
+- `GET /api/cards/:id` - Get card by ID
+- `POST /api/cards` - Create new card manually
+- `POST /api/cards/from-atlassian` - Create card from Atlassian URL
+- `PUT /api/cards/:id` - Update card
+- `DELETE /api/cards/:id` - Delete card
 
----
+## Card Creation from Atlassian URL
 
-## 🔐 How to use JWT
+To create a card from an Atlassian URL like `https://arif-dermawan.atlassian.net/browse/AIAGENT-1`:
 
-After login, you get a `token`. Send it in every protected request:
-
-```
-Authorization: Bearer YOUR_TOKEN_HERE
+```bash
+curl -X POST http://localhost:3000/api/cards/from-atlassian \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://arif-dermawan.atlassian.net/browse/AIAGENT-1"}'
 ```
 
----
+The system will:
+1. Extract the card ID from the URL (e.g., AIAGENT-1)
+2. Attempt to fetch card details from Atlassian (if credentials are configured)
+3. Create a card with proper title and details
+4. Store the card in the local database
 
-## 📦 Example Request — Place Order
+## Response Format
+
+All API responses follow this format:
 
 ```json
-POST /api/orders
 {
-  "items": [
-    { "product_id": 1, "quantity": 2 },
-    { "product_id": 3, "quantity": 1 }
-  ]
+  "success": true,
+  "data": {},
+  "message": "Operation successful"
 }
 ```
+
+Error responses:
+
+```json
+{
+  "success": false,
+  "error": "Error type",
+  "message": "Detailed error message"
+}
+```
+
+## Health Check
+
+```bash
+GET /health
+```
+
+Returns server status and available endpoints.
+
+## Database
+
+The API uses SQLite for data persistence:
+- `products.db` - Product data
+- `cards.db` - Card data
+
+Databases are automatically created and initialized on first run.
+
+## Environment Variables
+
+- `PORT` - Server port (default: 3000)
+- `ATLASSIAN_USERNAME` - Atlassian account email
+- `ATLASSIAN_API_TOKEN` - Atlassian API token
+
+## Testing
+
+```bash
+npm test
+```
+
+## License
+
+MIT

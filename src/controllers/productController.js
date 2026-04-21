@@ -1,86 +1,209 @@
-const pool = require('../config/database');
+const database = require('../../database');
 
-// GET /api/products — get all products (public)
-const getAllProducts = async (req, res) => {
-  try {
-    const result = await pool.query('SELECT * FROM products ORDER BY created_at DESC');
-    res.json(result.rows);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error.' });
-  }
-};
-
-// GET /api/products/:id — get single product (public)
-const getProductById = async (req, res) => {
-  const { id } = req.params;
-  try {
-    const result = await pool.query('SELECT * FROM products WHERE id = $1', [id]);
-    if (result.rows.length === 0) {
-      return res.status(404).json({ message: 'Product not found.' });
+class ProductController {
+  async getAllProducts(req, res) {
+    try {
+      const { name } = req.query;
+      const products = await database.getAllProducts(name);
+      
+      res.status(200).json({
+        success: true,
+        data: products,
+        count: products.length,
+        message: products.length === 0 ? 'No products found' : 'Products retrieved successfully'
+      });
+    } catch (error) {
+      console.error('Error getting products:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Internal server error',
+        message: 'Failed to retrieve products'
+      });
     }
-    res.json(result.rows[0]);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error.' });
-  }
-};
-
-// POST /api/products — create product (admin only)
-const createProduct = async (req, res) => {
-  const { name, description, price, stock, category, image_url } = req.body;
-
-  if (!name || !price) {
-    return res.status(400).json({ message: 'Name and price are required.' });
   }
 
-  try {
-    const result = await pool.query(
-      `INSERT INTO products (name, description, price, stock, category, image_url)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [name, description, price, stock || 0, category, image_url]
-    );
-    res.status(201).json({ message: 'Product created!', product: result.rows[0] });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error.' });
-  }
-};
+  async getProductById(req, res) {
+    try {
+      const { id } = req.params;
+      
+      if (!id || isNaN(id)) {
+        return res.status(400).json({
+          success: false,
+          error: 'Bad request',
+          message: 'Valid product ID is required'
+        });
+      }
 
-// PUT /api/products/:id — update product (admin only)
-const updateProduct = async (req, res) => {
-  const { id } = req.params;
-  const { name, description, price, stock, category, image_url } = req.body;
+      const product = await database.getProductById(parseInt(id));
+      
+      if (!product) {
+        return res.status(404).json({
+          success: false,
+          error: 'Not found',
+          message: 'Product not found'
+        });
+      }
 
-  try {
-    const result = await pool.query(
-      `UPDATE products SET name=$1, description=$2, price=$3, stock=$4, category=$5, image_url=$6
-       WHERE id=$7 RETURNING *`,
-      [name, description, price, stock, category, image_url, id]
-    );
-    if (result.rows.length === 0) {
-      return res.status(404).json({ message: 'Product not found.' });
+      res.status(200).json({
+        success: true,
+        data: product,
+        message: 'Product retrieved successfully'
+      });
+    } catch (error) {
+      console.error('Error getting product:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Internal server error',
+        message: 'Failed to retrieve product'
+      });
     }
-    res.json({ message: 'Product updated!', product: result.rows[0] });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error.' });
   }
-};
 
-// DELETE /api/products/:id — delete product (admin only)
-const deleteProduct = async (req, res) => {
-  const { id } = req.params;
-  try {
-    const result = await pool.query('DELETE FROM products WHERE id = $1 RETURNING id', [id]);
-    if (result.rows.length === 0) {
-      return res.status(404).json({ message: 'Product not found.' });
+  async createProduct(req, res) {
+    try {
+      const { name, description, price, category } = req.body;
+      
+      if (!name || !price) {
+        return res.status(400).json({
+          success: false,
+          error: 'Bad request',
+          message: 'Name and price are required'
+        });
+      }
+
+      if (isNaN(price) || price <= 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Bad request',
+          message: 'Price must be a positive number'
+        });
+      }
+
+      const productData = {
+        name: name.trim(),
+        description: description ? description.trim() : null,
+        price: parseFloat(price),
+        category: category ? category.trim() : null
+      };
+
+      const product = await database.createProduct(productData);
+      
+      res.status(201).json({
+        success: true,
+        data: product,
+        message: 'Product created successfully'
+      });
+    } catch (error) {
+      console.error('Error creating product:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Internal server error',
+        message: 'Failed to create product'
+      });
     }
-    res.json({ message: 'Product deleted successfully.' });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error.' });
   }
-};
 
-module.exports = { getAllProducts, getProductById, createProduct, updateProduct, deleteProduct };
+  async updateProduct(req, res) {
+    try {
+      const { id } = req.params;
+      const { name, description, price, category } = req.body;
+      
+      if (!id || isNaN(id)) {
+        return res.status(400).json({
+          success: false,
+          error: 'Bad request',
+          message: 'Valid product ID is required'
+        });
+      }
+
+      if (!name || !price) {
+        return res.status(400).json({
+          success: false,
+          error: 'Bad request',
+          message: 'Name and price are required'
+        });
+      }
+
+      if (isNaN(price) || price <= 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Bad request',
+          message: 'Price must be a positive number'
+        });
+      }
+
+      // Check if product exists
+      const existingProduct = await database.getProductById(parseInt(id));
+      if (!existingProduct) {
+        return res.status(404).json({
+          success: false,
+          error: 'Not found',
+          message: 'Product not found'
+        });
+      }
+
+      const productData = {
+        name: name.trim(),
+        description: description ? description.trim() : null,
+        price: parseFloat(price),
+        category: category ? category.trim() : null
+      };
+
+      const product = await database.updateProduct(parseInt(id), productData);
+      
+      res.status(200).json({
+        success: true,
+        data: product,
+        message: 'Product updated successfully'
+      });
+    } catch (error) {
+      console.error('Error updating product:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Internal server error',
+        message: 'Failed to update product'
+      });
+    }
+  }
+
+  async deleteProduct(req, res) {
+    try {
+      const { id } = req.params;
+      
+      if (!id || isNaN(id)) {
+        return res.status(400).json({
+          success: false,
+          error: 'Bad request',
+          message: 'Valid product ID is required'
+        });
+      }
+
+      // Check if product exists
+      const existingProduct = await database.getProductById(parseInt(id));
+      if (!existingProduct) {
+        return res.status(404).json({
+          success: false,
+          error: 'Not found',
+          message: 'Product not found'
+        });
+      }
+
+      await database.deleteProduct(parseInt(id));
+      
+      res.status(200).json({
+        success: true,
+        data: { id: parseInt(id) },
+        message: 'Product deleted successfully'
+      });
+    } catch (error) {
+      console.error('Error deleting product:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Internal server error',
+        message: 'Failed to delete product'
+      });
+    }
+  }
+}
+
+module.exports = new ProductController();

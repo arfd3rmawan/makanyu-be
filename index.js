@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
-const productRoutes = require('./productRoutes');
+const productRoutes = require('./src/routes/productRoutes');
+const cardRoutes = require('./src/routes/cardRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -12,6 +13,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.use('/api/products', productRoutes);
+app.use('/api/cards', cardRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -41,4 +43,5 @@ app.listen(PORT, () => {
   console.log(`Product API server is running on port ${PORT}`);
   console.log(`Health check: http://localhost:${PORT}/health`);
   console.log(`API base URL: http://localhost:${PORT}/api/products`);
+  console.log(`Cards API: http://localhost:${PORT}/api/cards`);
 });

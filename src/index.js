@@ -12,6 +12,7 @@ app.use(express.json());            // parse JSON request body
 app.use('/api/auth',     require('./routes/authRoutes'));
 app.use('/api/products', require('./routes/productRoutes'));
 app.use('/api/orders',   require('./routes/orderRoutes'));
+app.use('/api/cards',    require('./routes/cardRoutes'));
 
 // ─── Health check ─────────────────────────────────────────
 app.get('/', (req, res) => {
